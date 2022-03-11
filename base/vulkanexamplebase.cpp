@@ -17,6 +17,17 @@
 
 std::vector<const char*> VulkanExampleBase::args;
 
+// VkResult 具体定义见源文件
+// VkInstanceCreateInfo 所有创建instance需要的内容
+// VkAllocationCallbacks 自定义的内存管理函数(这里为null)
+// VkInstance 对应的instance
+// 关于VkInstanceCreateInfo:
+// 1,VkStructureType             sType 用于声明这个结构体的类型 这里必然是VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+// 为什么要用一个字段来显示声明:1,用于检查结构体类型是否正确 2,可以用无类型指针将结构体传入
+// 2,pNext 用于处理扩展数据
+// 3,flags ...
+// 4,pApplicationInfo 
+// 5,enabledExtensionCount and ppEnabledExtensionNames ...
 VkResult VulkanExampleBase::createInstance(bool enableValidation)
 {
 	this->settings.validation = enableValidation;
@@ -26,6 +37,17 @@ VkResult VulkanExampleBase::createInstance(bool enableValidation)
 	this->settings.validation = true;
 #endif
 
+	/*
+	typedef struct VkApplicationInfo {
+		VkStructureType    sType;
+		const void*        pNext;
+		const char*        pApplicationName;
+		uint32_t           applicationVersion;
+		const char*        pEngineName;
+		uint32_t           engineVersion;
+		uint32_t           apiVersion;
+	} VkApplicationInfo;
+	*/
 	VkApplicationInfo appInfo = {};
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	appInfo.pApplicationName = name.c_str();
@@ -897,12 +919,13 @@ VulkanExampleBase::~VulkanExampleBase()
 	xcb_disconnect(connection);
 #endif
 }
-
+// 一
 bool VulkanExampleBase::initVulkan()
 {
 	VkResult err;
 
 	// Vulkan instance
+	// validation vulkan的debug层
 	err = createInstance(settings.validation);
 	if (err) {
 		vks::tools::exitFatal("Could not create Vulkan instance : \n" + vks::tools::errorString(err), err);
@@ -926,6 +949,10 @@ bool VulkanExampleBase::initVulkan()
 	// Physical device
 	uint32_t gpuCount = 0;
 	// Get number of available physical devices
+	// vulkan的风格
+	// 1,第一次调用某函数用于获得数量n
+	// 2,根据n开辟对应大小的内存空间
+	// 3,将对应的内存传入原函数来将需要的值填入内存
 	VK_CHECK_RESULT(vkEnumeratePhysicalDevices(instance, &gpuCount, nullptr));
 	if (gpuCount == 0) {
 		vks::tools::exitFatal("No device with Vulkan support found", -1);
@@ -944,6 +971,8 @@ bool VulkanExampleBase::initVulkan()
 	// Select physical device to be used for the Vulkan example
 	// Defaults to the first device unless specified by command line
 	uint32_t selectedDevice = 0;
+
+	// 这边是对命令行参数的处理
 
 #if !defined(VK_USE_PLATFORM_ANDROID_KHR)
 	// GPU selection via command line argument
@@ -968,7 +997,7 @@ bool VulkanExampleBase::initVulkan()
 #endif
 
 	physicalDevice = physicalDevices[selectedDevice];
-
+#pragma region SaveAndShowPhysicalDevice
 	// Store properties (including limits), features and memory properties of the physical device (so that examples can check against them)
 	vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
 	vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
@@ -976,6 +1005,7 @@ bool VulkanExampleBase::initVulkan()
 
 	// Derived examples can override this to set actual features (based on above readings) to enable for logical device creation
 	getEnabledFeatures();
+#pragma endregion
 
 	// Vulkan device creation
 	// This is handled by a separate class that gets a logical device representation

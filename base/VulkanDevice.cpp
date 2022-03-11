@@ -30,6 +30,21 @@ namespace vks
 		vkGetPhysicalDeviceFeatures(physicalDevice, &features);
 		// Memory properties are used regularly for creating all kinds of buffers
 		vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
+
+		// 经典的处理方式
+		// 关于 VkQueueFamilyProperties 称为"family"
+		// 一个family可能保存了不同的queues 
+		// queue是提交command buffers的对象 
+		// 1,Graphics queues can run graphics pipelines vkCmdDraw*
+		// 2,Compute queues can run compute pipelines vkCmdDispatch*
+		// 3,Transfer queues can perform transfer (copy) operations from vkCmdCopy*
+		// 4,Sparse binding queues can change the binding of sparse resources to memory with vkQueueBindSparse
+		// family指的是一簇queue 
+		// 可能这里的family是软件上的概念 硬件并没有支持
+		// 也可能对应了硬件上真正的queue
+		// 这里先考虑只做一个universal queue
+
+
 		// Queue family properties, used for setting up requested queues upon device creation
 		uint32_t queueFamilyCount;
 		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
@@ -164,8 +179,8 @@ namespace vks
 	*
 	* @param enabledFeatures Can be used to enable certain features upon device creation
 	* @param pNextChain Optional chain of pointer to extension structures
-	* @param useSwapChain Set to false for headless rendering to omit the swapchain device extensions
-	* @param requestedQueueTypes Bit flags specifying the queue types to be requested from the device  
+	* @param useSwapChain Set to false for headless rendering to omit the swapchain device extensions 默认值 true
+	* @param requestedQueueTypes Bit flags specifying the queue types to be requested from the device  默认值 VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT
 	*
 	* @return VkResult of the device creation call
 	*/
@@ -179,6 +194,7 @@ namespace vks
 
 		// Get queue family indices for the requested queue family types
 		// Note that the indices may overlap depending on the implementation
+#pragma region createQueue
 
 		const float defaultQueuePriority(0.0f);
 
@@ -240,6 +256,11 @@ namespace vks
 			queueFamilyIndices.transfer = queueFamilyIndices.graphics;
 		}
 
+#pragma endregion
+
+		// 创建逻辑设备
+		// 这里deviceExtension当作不存在就好(以后再说)
+		// 主要看 queueCreateInfoCount 和 pQueueCreateInfos
 		// Create the logical device representation
 		std::vector<const char*> deviceExtensions(enabledExtensions);
 		if (useSwapChain)
@@ -455,6 +476,12 @@ namespace vks
 	*
 	* @return A handle to the created command buffer
 	*/
+	// 为什么要使用pool
+	// 1,有的时候 某些应用会使用较短生命周期的内存 频繁的创建和销毁 会不太高效
+	// 2,command buffer必须同时被cpu和gpu可见,这部分内存一次性只能申请较大的一部分空间
+	// 3,申请内存会造成内存映射开销(页表映射和cache修改),如果一次性申请一堆,可以降低这部分的开销
+
+	// 一个CommandBuffer需要对应一簇queue(即为family),所以需要指定他的queueFamilyIndex
 	VkCommandPool VulkanDevice::createCommandPool(uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags)
 	{
 		VkCommandPoolCreateInfo cmdPoolInfo = {};
