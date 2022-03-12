@@ -1025,6 +1025,7 @@ bool VulkanExampleBase::initVulkan()
 	VkBool32 validDepthFormat = vks::tools::getSupportedDepthFormat(physicalDevice, &depthFormat);
 	assert(validDepthFormat);
 
+	// 应该是从device中读取一些数据 用于创建交换链
 	swapChain.connect(instance, physicalDevice, device);
 
 	// Create synchronization objects
